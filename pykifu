@@ -10,19 +10,27 @@ import gomill.boards
 import codecs
 import collections
 
-def main():
-    
-    settings = {
-        'page_width': 612.00,      # US STANDARD LETTER WIDTH
-        'page_height': 792.00,     # US STANDARD LETTER WIDTH
-        'page_margin': 40.00,           # 0.55 inch margin
-        'font_family': 'Bodoni',
-        'font_size': 12,
-    }
+settings = {
+    'page_width': 612.00,      # US STANDARD LETTER WIDTH
+    'page_height': 792.00,     # US STANDARD LETTER WIDTH
+    'page_margin': 40.00,           # 0.55 inch margin
+    'font_family': 'Bodoni',
+    'font_size': 12,
+    'split_strategy': 'standard',
+}
 
+
+def main():
     settings['goban_width'] = settings['page_width'] - settings['page_margin'] * 2
     settings['templates'] = load_templates(**settings)
     sgf_file = sys.argv[1]
+    try:
+        if sys.argv[2] == 'split_by_move':
+            settings['split_strategy'] = 'split_by_move'
+        else:
+            print('Unknown split strategy')
+    except:
+        pass
     process_file(sgf_file, **settings)
 
 
@@ -201,9 +209,12 @@ def normalize_notes(notes):
     return notes
 
 def split_moves(game, **kws):
-    moves = split_by_comments(game, **kws)
-    if len(moves) < 2:
-        moves = split_by_sente(game, **kws)
+    if settings['split_strategy'] == 'split_by_move':
+        moves = split_by_move(game, **kws)
+    else:        
+        moves = split_by_comments(game, **kws)
+        if len(moves) < 2:
+            moves = split_by_sente(game, **kws)
 
     return moves
 
@@ -280,6 +291,21 @@ def split_by_comments(game, **kws):
             start = i+2
 
     if start <= len(nodes):        
+        result.append((start, len(nodes)))
+    return result
+
+
+
+def split_by_move(game, **kws):
+    result = []
+    start = 1
+    nodes = list(game.get_main_sequence())
+    nodes = nodes[1:]
+    for i, node in enumerate(nodes):
+        result.append((start, i+1))
+        start = i+2
+
+    if start <= len(nodes):
         result.append((start, len(nodes)))
     return result
 
